@@ -14,12 +14,7 @@ script = "script"
 solc = "0.8.19"
 src = "src"
 test = "test"
-fs_permissions = [
-  { access = "read-write", path = "././config.json" }, 
-  { access = "read-write", path = "./src/script/output.json" }
-]
-# fs_permissions = [{ access = "read", path = "./"}]
-
+fs_permissions = [{ access = "read-write", path = "./config.json" }]
 
 [profile.ci]
 fuzz = { runs = 10_000 }

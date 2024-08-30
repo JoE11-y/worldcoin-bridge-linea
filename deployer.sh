@@ -3,6 +3,13 @@
 # Define the path to the JSON file
 JSON_FILE="./output.json"
 
+# Check if the JSON file exists
+if [ ! -f "$JSON_FILE" ]; then
+  # If the file doesn't exist, create a new JSON file with the initial data
+  echo "{}" > "$JSON_FILE"
+  echo "Created new JSON file: $JSON_FILE"
+fi
+
 # Initialize default values for variables
 path=""
 rpc_url=""
@@ -91,13 +98,6 @@ fi
 printf "%s\n" "$output_stream"
 
 if [ -n "$contract" ] && [ -n "$address" ]; then
-  # Check if the JSON file exists
-  if [ ! -f "$JSON_FILE" ]; then
-    # If the file doesn't exist, create a new JSON file with the initial data
-    echo "{}" > "$JSON_FILE"
-    echo "Created new JSON file: $JSON_FILE"
-  fi
-
   # Add the new contract and address to the JSON file
   jq --arg contract "$contract" --arg address "$address" '.[$contract] = $address' "$JSON_FILE" > tmp.$$.json && mv tmp.$$.json "$JSON_FILE"
 

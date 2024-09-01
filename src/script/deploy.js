@@ -7,8 +7,10 @@ import { Command } from "commander";
 import { execSync } from "child_process";
 
 // === Constants ==================================================================================
-const CONFIG_FILENAME = "./config.json";
+const CONFIG_FILENAME = "./src/script/config.json";
 const DEFAULT_RPC_URL = "http://localhost:8545";
+const DEFAULT_MESSENGER_L1 = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5";
+const DEFAULT_MESSENGER_L2 = "0x971e727e956690b9957be6d51Ec16E73AcAC83A7";
 
 // === Implementation =============================================================================
 
@@ -72,6 +74,24 @@ async function getPrivateKey(config) {
   }
   if (!config.privateKey) {
     config.privateKey = await ask("Enter your private key: ");
+  }
+}
+
+async function getMessageServiceAddressL1(config) {
+  if (!config.messageServiceAddressL1) {
+    config.messageServiceAddressL1 = await ask(`Enter L1 message service address: (${DEFAULT_MESSENGER_L1}) `);
+  }
+  if (!config.messageServiceAddressL1) {
+    config.messageServiceAddressL1 = DEFAULT_MESSENGER_L1;
+  }
+}
+
+async function getMessageServiceAddressL2(config) {
+  if (!config.messageServiceAddressL2) {
+    config.messageServiceAddressL2 = await ask(`Enter L2 message service address: (${DEFAULT_MESSENGER_L2}) `);
+  }
+  if (!config.messageServiceAddressL2) {
+    config.messageServiceAddressL2 = DEFAULT_MESSENGER_L2;
   }
 }
 
@@ -188,6 +208,8 @@ async function loadConfiguration(useConfig) {
     }
   } else {
     spinner.succeed("Configuration not loaded");
+    fs.writeFileSync(CONFIG_FILENAME, JSON.stringify({}), "utf8");
+    fs.rmSync(CONFIG_FILENAME);
     return {};
   }
 }
@@ -214,15 +236,15 @@ async function deployLineaWorldID(config) {
 
   try {
     const data = execSync(
-      `forge script src/script/DeployLineaWorldID.s.sol:DeployOpWorldID --fork-url ${config.lineaRpcUrl} \
+      `forge script src/script/DeployLineaWorldID.s.sol:DeployLineaWorldID --fork-url ${config.lineaRpcUrl} \
       --etherscan-api-key ${config.lineaEtherscanApiKey} --broadcast --verify -vvvv`,
     );
     console.log(data.toString());
+    spinner.succeed("DeployLineaWorldID.s.sol ran successfully!");
   } catch (err) {
-    console.error(err);
+    spinner.fail("DeployLineaWorldID.s.sol failed!");
+    throw err;
   }
-
-  spinner.succeed("DeployLineaWorldID.s.sol ran successfully!");
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -234,14 +256,14 @@ async function deployLineaStateBridgeMainnet(config) {
 
   try {
     const data =
-      execSync(`forge script src/script/DeployLineaStateBridgeMainnet.s.sol:DeployLineaStateBridgeMainnet --fork-url ${config.ethereumRpcUrl} \
+      execSync(`forge script src/script/DeployLineaStateBridge.s.sol:DeployLineaStateBridge --fork-url ${config.ethereumRpcUrl} \
       --etherscan-api-key ${config.ethereumEtherscanApiKey} --broadcast --verify -vvvv`);
     console.log(data.toString());
+    spinner.succeed("DeployLineaStateBridge.s.sol ran successfully!");
   } catch (err) {
-    console.error(err);
+    spinner.fail("DeployLineaStateBridge.s.sol failed!");
+    throw err;
   }
-
-  spinner.succeed("DeployLineaStateBridgeMainnet.s.sol ran successfully!");
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -256,11 +278,11 @@ async function InitializeLineaStateBridge(config) {
       `forge script src/script/InitializeLineaStateBridge.s.sol:LineaStateBridge --fork-url ${config.lineaRpcUrl} --broadcast -vvvv --legacy`,
     );
     console.log(data.toString());
+    spinner.succeed("InitializeLineaStateBridge.s.sol ran successfully!");
   } catch (err) {
-    console.error(err);
+    spinner.fail("InitializeLineaStateBridge.s.sol failed!");
+    throw err;
   }
-
-  spinner.succeed("InitializeLineaStateBridge.s.sol ran successfully!");
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -269,22 +291,27 @@ async function InitializeLineaStateBridge(config) {
 
 async function deploymentMainnet(config) {
   dotenv.config();
-
-  await getPrivateKey(config);
-  await getEthereumRpcUrl(config);
-  await getLineaRpcUrl(config);
-  await getEthereumEtherscanApiKey(config);
-  await getLineaEtherscanApiKey(config);
-  await getTreeDepth(config);
-  await saveConfiguration(config);
-  await deployLineaWorldID(config);
-  await getWorldIDIdentityManagerAddress(config);
-  await getLineaWorldIDAddress(config);
-  await saveConfiguration(config);
-  await deployLineaStateBridgeMainnet(config);
-  await getLineaStateBridgeAddress(config);
-  await saveConfiguration(config);
-  await InitializeLineaStateBridge(config);
+  try {
+    await getPrivateKey(config);
+    await getEthereumRpcUrl(config);
+    await getLineaRpcUrl(config);
+    await getEthereumEtherscanApiKey(config);
+    await getLineaEtherscanApiKey(config);
+    await getTreeDepth(config);
+    await getMessageServiceAddressL1(config);
+    await getMessageServiceAddressL2(config);
+    await saveConfiguration(config);
+    await deployLineaWorldID(config);
+    await getWorldIDIdentityManagerAddress(config);
+    // await getLineaWorldIDAddress(config);
+    await saveConfiguration(config);
+    await deployLineaStateBridgeMainnet(config);
+    // await getLineaStateBridgeAddress(config);
+    await saveConfiguration(config);
+    await InitializeLineaStateBridge(config);
+  } catch (err) {
+    throw err;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////
